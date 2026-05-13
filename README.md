@@ -104,11 +104,8 @@ The script walks you through everything step by step:
 ```
   ◈  SELECT INPUT FOLDER
   ──────────────────────────────────────────────────────
-  [1]  blender-render/    216 frames
-  [2]  coolbg-render/     24 frames
-  [3]  Enter path manually
-
-  ❯ Pick a folder: 1
+  [1]  PngSeq/    (shows total no. of frames)
+  [2]  Enter path manually
 ```
 
 Pick the folder that contains your PNG sequence. If your folder is somewhere else on disk, pick `Enter path manually` and type the full path.
@@ -120,12 +117,12 @@ Pick the folder that contains your PNG sequence. If your folder is somewhere els
 ```
   ◈  OUTPUT FILE NAME
   ──────────────────────────────────────────────────────
-  · Just a name:       my_video
-  · With a folder:     renders/my_video
-  · Full path:         D:/Projects/renders/my_video
+  · Just a name:     eg., my_video
+  · With a folder:   eg., renders/my_video
+  · Full path:       eg., C:/Desktop/my_video
 
-  ❯ Output name (no .mp4): blender_final
-  ✦  Will save as: D:/Projects/PNG TO MP4/blender_final.mp4
+  ❯ Output name (without .mp4): my_video
+  ✦  Will save as: my_video.mp4
 ```
 
 If a file with that name already exists, it will warn you and ask for a different name. No accidental overwrites.
@@ -173,16 +170,7 @@ Match this to whatever you set in Blender (or your render software) when you exp
   [3]  High    best quality · larger file · fast motion 10 Mbps
 ```
 
-Recommended bitrates by resolution:
-
-| Resolution | Low | Medium | High |
-|---|---|---|---|
-| 720p | 2 Mbps | 3.5 Mbps | 5 Mbps |
-| 1080p | 5 Mbps | 8 Mbps | 10 Mbps |
-| 1440p | 10 Mbps | 15 Mbps | 20 Mbps |
-| 4K | 35 Mbps | 50 Mbps | 68 Mbps |
-
-For smooth background animations (like a coolbg loop), Low or Medium is more than enough.
+i suggest you to choose medium, it gets the job done so
 
 ---
 
@@ -218,13 +206,13 @@ The script shows a full summary before starting:
   ╭──────────────────────────────────────────────────────╮
   │  ENCODING SUMMARY                                    │
   ├──────────────────────────────────────────────────────┤
-  │  Input folder    blender-render/                     │
-  │  Output file     blender_final.mp4                   │
-  │  Source res      1920 × 1080                         │
-  │  Output res      1920 × 1080                         │
-  │  Frame rate      24 fps                              │
-  │  Bitrate         8 Mbps  (8,000,000 bps)             │
-  │  Codec           mp4v  →  H.264 via FFmpeg           │
+  │  Input folder    (input folder)                      │
+  │  Output file     (output folder)                     │
+  │  Source res      (source res)                        │
+  │  Output res      (output res)                        │
+  │  Frame rate      (fps)                               │
+  │  Bitrate         (bitrate)                           │
+  │  Codec           (codec)                             │
   ╰──────────────────────────────────────────────────────╯
 
   ❯ Start encoding? [Y/n]:
@@ -232,32 +220,16 @@ The script shows a full summary before starting:
 
 Press Enter (or `Y`) to start. A live progress bar will show while encoding:
 
-```
-  ████████████░░░░░░░░░░░░░░░░   45.2%  97/216  ETA 00:12
-```
-
 When done:
 
 ```
   ╭──────────────────────────────────────────────────────╮
   │  ✦  RENDER COMPLETE                                  │
   ├──────────────────────────────────────────────────────┤
-  │  Saved to        D:/Projects/PNG TO MP4/output.mp4   │
-  │  Time taken      00m 24s                             │
+  │  Saved to        (output path)                       │
+  │  Time taken      (time)                              │
   ╰──────────────────────────────────────────────────────╯
 ```
-
----
-
-## ✦ Bonus: Rename Frames Script
-
-If your frames have a different prefix than the rest of your sequence (e.g. `coolbg-01.png` instead of `blender-01.png`), use the included rename helper:
-
-```bash
-python rename_frames.py
-```
-
-Edit the top of that file to set your old and new prefix, then run it. It previews all renames before doing anything.
 
 ---
 
@@ -275,16 +247,7 @@ Try changing `CODEC = "mp4v"` to `CODEC = "XVID"` at the top of the script.
 **AI upscaling out of memory**
 Lower the `tile=512` value inside `load_upscaler()` in the script to something like `tile=256`.
 
----
 
-## ✦ Author
-
-**Mann** — Student · VFX Artist · 3D Enthusiast
-
-> *"Sometimes I draw some cool stuffs, I do vfx things, Sometimes 3D too."*
-
-GitHub → [github.com/Mannloser](https://github.com/Mannloser)
-
----
-
-*Built with Python, OpenCV, FFmpeg, and Real-ESRGAN.*
+**Any other issue**
+Contact me on instagram - [@mannloser](https://www.instagram.com/mannloser) or
+Email - [mannsakuratv](mailto:mannsakuratv@gmail.com)

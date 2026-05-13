@@ -194,10 +194,10 @@ def pick_folder():
 
 
 def pick_output_name():
-    section("OUTPUT FILE NAME")
-    info("Just a name:     my_video")
-    info("With a folder:   renders/my_video")
-    info("Full path:       D:/Projects/renders/my_video")
+    section("OUTPUT FILE NAME AND LOCATION")
+    info("Just a name:     eg., my_video")
+    info("With a folder:   eg., renders/my_video")
+    info("Full path:       eg., C:/Desktop/my_video")
     line()
 
     while True:
