@@ -127,8 +127,8 @@ Pick the folder that contains your PNG sequence. If your folder is somewhere els
 
 If a file with that name already exists, it will warn you and ask for a different name. No accidental overwrites.
 
-- If you type just a name (e.g. `my_video`), the file will be saved in your current directory.
-- If you type a name with a folder (e.g. `renders/my_video`), it will create a `renders` subfolder inside your current directory and save the file there.
+- If you type just a name (e.g. `my_video`), the file will be saved in the current directory.
+- If you type a name with a folder (e.g. `renders/my_video`), a `renders` subfolder will be created inside the current directory, and the file will be saved there.
 - If you type a full path (e.g. `C:/Users/YourName/Videos/my_video`), the file will be saved at that exact location.
 
 ---
