@@ -140,15 +140,31 @@ def pick_output_name():
     divider()
     print("  OUTPUT FILE NAME")
     divider()
+    print("  You can enter just a name:       output")
+    print("  Or include a folder path:        renders/output")
+    print("  Or a full path:                  D:/Projects/renders/output")
+    divider()
+
     while True:
         name = input("  Enter output name (without .mp4): ").strip()
         if not name:
             name = "output"
+
         output_file = name + ".mp4"
+        output_dir  = os.path.dirname(output_file)
+
+        # If a folder was specified and doesn't exist, offer to create it
+        if output_dir and not os.path.exists(output_dir):
+            create = input(f"  Folder '{output_dir}' doesn't exist. Create it? [Y/n]: ").strip().lower()
+            if create == "n":
+                continue
+            os.makedirs(output_dir, exist_ok=True)
+            print(f"  ✔  Created folder: {output_dir}")
+
         if os.path.exists(output_file):
             print(f"  ⚠  '{output_file}' already exists! Choose a different name.")
         else:
-            print(f"  ✔  Will save as: {output_file}")
+            print(f"  ✔  Will save as: {os.path.abspath(output_file)}")
             return output_file
 
 
