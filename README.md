@@ -210,13 +210,13 @@ The script shows a full summary before starting:
   ╭──────────────────────────────────────────────────────╮
   │  ENCODING SUMMARY                                    │
   ├──────────────────────────────────────────────────────┤
-  │  Input folder    (input folder)                      │
-  │  Output file     (output folder)                     │
+  │  Input folder    (selected input folder)                      │
+  │  Output file     (selected output folder)                     │
   │  Source res      (source res)                        │
-  │  Output res      (output res)                        │
-  │  Frame rate      (fps)                               │
-  │  Bitrate         (bitrate)                           │
-  │  Codec           (codec)                             │
+  │  Output res      (selected output res)                        │
+  │  Frame rate      (selected fps)                               │
+  │  Bitrate         (selected bitrate)                           │
+  │  Codec           (selected codec)                             │
   ╰──────────────────────────────────────────────────────╯
 
   ❯ Start encoding? [Y/n]:
