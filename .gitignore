@@ -4,8 +4,7 @@ __pycache__/
 
 # Build folders
 .dist/
-blender-render/
-coolbg-render/
+PngSeq/
 
 # FFmpeg files
 ffmpeg-*.zip
@@ -35,3 +34,6 @@ Thumbs.db
 
 # Ignore all python files except png_to_mp4.py
 rename_frames.py
+
+#other files
+.gitignore
