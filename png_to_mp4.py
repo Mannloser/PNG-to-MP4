@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import glob
+import time
 import subprocess
 
 
@@ -16,21 +17,12 @@ import subprocess
 # ║                     CONFIGURATION VARIABLES                     ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-CODEC         = "mp4v"           # "mp4v" | "XVID"
+CODEC         = "mp4v"
 RESIZE_FILTER = cv2.INTER_LANCZOS4
 
-# Real-ESRGAN model paths (place .pth files next to this script)
 ESRGAN_MODELS = {
-    "2": {
-        "label": "2x  (doubles resolution)",
-        "scale": 2,
-        "path":  "RealESRGAN_x2plus.pth",
-    },
-    "4": {
-        "label": "4x  (quadruples resolution)",
-        "scale": 4,
-        "path":  "RealESRGAN_x4plus.pth",
-    },
+    "2": {"label": "2×  — doubles resolution",   "scale": 2, "path": "RealESRGAN_x2plus.pth"},
+    "4": {"label": "4×  — quadruples resolution", "scale": 4, "path": "RealESRGAN_x4plus.pth"},
 }
 
 
@@ -39,11 +31,11 @@ ESRGAN_MODELS = {
 # ╚══════════════════════════════════════════════════════════════════╝
 
 RESOLUTIONS = {
-    "1": {"label": "720p  HD      (1280 × 720)",         "size": (1280, 720)},
-    "2": {"label": "1080p Full HD (1920 × 1080)",        "size": (1920, 1080)},
-    "3": {"label": "1440p 2K QHD  (2560 × 1440)",        "size": (2560, 1440)},
-    "4": {"label": "4K    UHD     (3840 × 2160)",        "size": (3840, 2160)},
-    "5": {"label": "Original  (keep source resolution)", "size": None},
+    "1": {"label": "720p   HD       1280 × 720",   "size": (1280,  720)},
+    "2": {"label": "1080p  Full HD  1920 × 1080",  "size": (1920, 1080)},
+    "3": {"label": "1440p  2K QHD   2560 × 1440",  "size": (2560, 1440)},
+    "4": {"label": "4K     UHD      3840 × 2160",  "size": (3840, 2160)},
+    "5": {"label": "Original  (keep source size)", "size": None},
 }
 
 FPS_OPTIONS = {
@@ -54,34 +46,101 @@ FPS_OPTIONS = {
 }
 
 BITRATE_PRESETS = {
-    "1": {"1": 2_000_000,  "2": 3_500_000,  "3": 5_000_000  },  # 720p
-    "2": {"1": 5_000_000,  "2": 8_000_000,  "3": 10_000_000 },  # 1080p
-    "3": {"1": 10_000_000, "2": 15_000_000, "3": 20_000_000 },  # 1440p
-    "4": {"1": 35_000_000, "2": 50_000_000, "3": 68_000_000 },  # 4K
-    "5": {"1": 5_000_000,  "2": 8_000_000,  "3": 10_000_000 },  # Original
+    "1": {"1": 2_000_000,  "2": 3_500_000,  "3": 5_000_000  },
+    "2": {"1": 5_000_000,  "2": 8_000_000,  "3": 10_000_000 },
+    "3": {"1": 10_000_000, "2": 15_000_000, "3": 20_000_000 },
+    "4": {"1": 35_000_000, "2": 50_000_000, "3": 68_000_000 },
+    "5": {"1": 5_000_000,  "2": 8_000_000,  "3": 10_000_000 },
 }
 
 BITRATE_LABELS = {
-    "1": "Low    (smaller file, good for static/slow content)",
-    "2": "Medium (balanced quality & size)  ← recommended",
-    "3": "High   (best quality, larger file, fast motion)",
+    "1": "Low     smaller file · good for static content",
+    "2": "Medium  balanced quality & size",
+    "3": "High    best quality · larger file · fast motion",
 }
 
 
 # ╔══════════════════════════════════════════════════════════════════╗
-# ║                        HELPER FUNCTIONS                         ║
+# ║                       TERMINAL STYLING                          ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-def divider():
-    print("─" * 52)
+class C:
+    RESET   = "\033[0m"
+    BOLD    = "\033[1m"
+    DIM     = "\033[2m"
+
+    BLACK   = "\033[30m"
+    WHITE   = "\033[97m"
+    GRAY    = "\033[90m"
+
+    RED     = "\033[91m"
+    GREEN   = "\033[92m"
+    YELLOW  = "\033[93m"
+    BLUE    = "\033[94m"
+    MAGENTA = "\033[95m"
+    CYAN    = "\033[96m"
+
+    BG_BLACK  = "\033[40m"
+    BG_BLUE   = "\033[44m"
+    BG_CYAN   = "\033[46m"
+
+W = 58   # total width
+
+def clr(text, *codes):
+    return "".join(codes) + text + C.RESET
+
+def line(char="─"):
+    print(clr("  " + char * (W - 2), C.GRAY))
+
+def blank():
+    print()
+
+def header():
+    blank()
+    print(clr("  ╭" + "─" * (W - 4) + "╮", C.CYAN))
+    title = "PNG  →  MP4  CONVERTER"
+    pad   = (W - 4 - len(title)) // 2
+    print(clr("  │", C.CYAN) +
+          " " * pad + clr(title, C.BOLD, C.WHITE) + " " * (W - 4 - pad - len(title)) +
+          clr("│", C.CYAN))
+    print(clr("  ╰" + "─" * (W - 4) + "╯", C.CYAN))
+    blank()
+
+def section(title):
+    blank()
+    label = f"  ◈  {title}"
+    print(clr(label, C.BOLD, C.CYAN))
+    line()
+
+def opt(key, label, tag="", ok=True):
+    key_str  = clr(f"  [{key}]", C.BOLD, C.YELLOW)
+    tag_str  = ("  " + clr(tag, C.GREEN if ok else C.RED, C.DIM)) if tag else ""
+    print(f"{key_str}  {label}{tag_str}")
+
+def success(msg):
+    print(clr(f"\n  ✦  {msg}", C.GREEN, C.BOLD))
+
+def warn(msg):
+    print(clr(f"  ⚠  {msg}", C.YELLOW))
+
+def error(msg):
+    print(clr(f"\n  ✖  {msg}", C.RED, C.BOLD))
+
+def info(msg):
+    print(clr(f"  ·  {msg}", C.GRAY))
 
 def ask(prompt, valid_keys):
+    prompt_str = clr(f"\n  ❯ {prompt} ", C.BOLD, C.WHITE)
     while True:
-        choice = input(prompt).strip()
+        choice = input(prompt_str).strip()
         if choice in valid_keys:
             return choice
-        print(f"  ⚠  Invalid choice. Enter one of: {', '.join(valid_keys)}")
+        warn(f"Enter one of: {', '.join(valid_keys)}")
 
+
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║                        MENU FUNCTIONS                           ║
+# ╚══════════════════════════════════════════════════════════════════╝
 
 def pick_folder():
     subfolders = sorted([
@@ -89,170 +148,212 @@ def pick_folder():
         if os.path.isdir(d) and glob.glob(os.path.join(d, "*.png"))
     ])
 
-    divider()
-    print("  SELECT PNG SEQUENCE FOLDER")
-    divider()
+    section("SELECT INPUT FOLDER")
 
     if not subfolders:
-        print("  ⚠  No subfolders with PNG files found in current directory.")
-        print("  Enter the folder path manually.")
-        divider()
+        warn("No PNG folders found in current directory.")
+        line()
         while True:
-            folder = input("  Folder path: ").strip()
+            folder = input(clr("\n  ❯ Folder path: ", C.BOLD, C.WHITE)).strip()
             if os.path.isdir(folder):
                 pngs = glob.glob(os.path.join(folder, "*.png"))
                 if pngs:
-                    print(f"  ✔  Found {len(pngs)} PNG(s) in '{folder}'")
+                    success(f"Found {len(pngs)} PNG frames in '{folder}'")
                     return folder
                 else:
-                    print(f"  ⚠  No PNG files found in: {folder}")
+                    warn(f"No PNG files in: {folder}")
             else:
-                print(f"  ⚠  Folder not found: {folder}")
+                warn(f"Folder not found: {folder}")
 
     for i, folder in enumerate(subfolders, 1):
         count = len(glob.glob(os.path.join(folder, "*.png")))
-        print(f"  [{i}]  {folder}/   ({count} PNG files)")
+        count_str = clr(f"{count} frames", C.DIM, C.GRAY)
+        opt(str(i), f"{clr(folder + '/', C.WHITE)}  {count_str}")
 
     manual_key = str(len(subfolders) + 1)
-    print(f"  [{manual_key}]  Enter path manually")
-    divider()
+    opt(manual_key, clr("Enter path manually", C.DIM))
+    line()
 
     valid_keys = [str(i) for i in range(1, len(subfolders) + 2)]
-    choice = ask("  Your choice: ", valid_keys)
+    choice = ask("Pick a folder", valid_keys)
 
     if choice == manual_key:
         while True:
-            folder = input("  Folder path: ").strip()
+            folder = input(clr("\n  ❯ Folder path: ", C.BOLD, C.WHITE)).strip()
             if os.path.isdir(folder):
                 pngs = glob.glob(os.path.join(folder, "*.png"))
                 if pngs:
-                    print(f"  ✔  Found {len(pngs)} PNG(s) in '{folder}'")
+                    success(f"Found {len(pngs)} PNG frames")
                     return folder
                 else:
-                    print(f"  ⚠  No PNG files found in: {folder}")
+                    warn(f"No PNG files in: {folder}")
             else:
-                print(f"  ⚠  Folder not found: {folder}")
+                warn(f"Folder not found: {folder}")
     else:
         return subfolders[int(choice) - 1]
 
 
 def pick_output_name():
-    divider()
-    print("  OUTPUT FILE NAME")
-    divider()
-    print("  You can enter just a name:       output")
-    print("  Or include a folder path:        renders/output")
-    print("  Or a full path:                  D:/Projects/renders/output")
-    divider()
+    section("OUTPUT FILE NAME")
+    info("Just a name:     my_video")
+    info("With a folder:   renders/my_video")
+    info("Full path:       D:/Projects/renders/my_video")
+    line()
 
     while True:
-        name = input("  Enter output name (without .mp4): ").strip()
+        name = input(clr("\n  ❯ Output name (no .mp4): ", C.BOLD, C.WHITE)).strip()
         if not name:
             name = "output"
 
         output_file = name + ".mp4"
         output_dir  = os.path.dirname(output_file)
 
-        # If a folder was specified and doesn't exist, offer to create it
         if output_dir and not os.path.exists(output_dir):
-            create = input(f"  Folder '{output_dir}' doesn't exist. Create it? [Y/n]: ").strip().lower()
+            create = input(clr(f"\n  ❯ Create folder '{output_dir}'? [Y/n]: ", C.BOLD, C.WHITE)).strip().lower()
             if create == "n":
                 continue
             os.makedirs(output_dir, exist_ok=True)
-            print(f"  ✔  Created folder: {output_dir}")
+            success(f"Created folder: {output_dir}")
 
         if os.path.exists(output_file):
-            print(f"  ⚠  '{output_file}' already exists! Choose a different name.")
+            warn(f"'{output_file}' already exists — choose another name.")
         else:
-            print(f"  ✔  Will save as: {os.path.abspath(output_file)}")
+            success(f"Will save as:  {clr(os.path.abspath(output_file), C.WHITE)}")
             return output_file
 
 
 def pick_resolution():
-    divider()
-    print("  SELECT OUTPUT RESOLUTION")
-    divider()
+    section("OUTPUT RESOLUTION")
     for key, val in RESOLUTIONS.items():
-        print(f"  [{key}]  {val['label']}")
-    divider()
-    return ask("  Your choice: ", RESOLUTIONS.keys())
+        opt(key, val["label"])
+    line()
+    return ask("Resolution", RESOLUTIONS.keys())
+
 
 def pick_fps():
-    divider()
-    print("  SELECT FRAME RATE (FPS)")
-    divider()
+    section("FRAME RATE")
     for key, fps in FPS_OPTIONS.items():
-        print(f"  [{key}]  {fps} FPS")
-    divider()
-    return ask("  Your choice: ", FPS_OPTIONS.keys())
+        opt(key, clr(f"{fps} fps", C.WHITE))
+    line()
+    return ask("FPS", FPS_OPTIONS.keys())
+
 
 def pick_bitrate(res_key):
     presets = BITRATE_PRESETS[res_key]
-    divider()
-    print("  SELECT BITRATE")
-    divider()
+    section("BITRATE")
     for key, label in BITRATE_LABELS.items():
-        mbps = presets[key] // 1_000_000
-        print(f"  [{key}]  {label}  →  {mbps} Mbps")
-    divider()
-    return ask("  Your choice: ", presets.keys())
+        mbps     = presets[key] // 1_000_000
+        mbps_str = clr(f"{mbps} Mbps", C.CYAN)
+        rec      = clr("  ← recommended", C.DIM, C.GRAY) if key == "2" else ""
+        opt(key, f"{label}  {mbps_str}{rec}")
+    line()
+    return ask("Bitrate", presets.keys())
 
 
 def pick_upscale():
-    divider()
-    print("  AI UPSCALING  (Real-ESRGAN)")
-    divider()
-    print("  [0]  No upscaling  (use selected output resolution as-is)")
+    section("AI UPSCALING  (Real-ESRGAN)")
+    opt("0", clr("No upscaling", C.WHITE))
     for key, val in ESRGAN_MODELS.items():
-        model_found = "✔ model found" if os.path.exists(val["path"]) else "⚠ model not downloaded"
-        print(f"  [{key}]  {val['label']}   [{model_found}]")
-    divider()
-    print("  ℹ  Models must be placed next to this script.")
-    print("  ℹ  Download: https://github.com/xinntao/Real-ESRGAN/releases")
-    divider()
-    choice = ask("  Your choice: ", ["0", *ESRGAN_MODELS.keys()])
+        found    = os.path.exists(val["path"])
+        tag      = "model found" if found else "model not downloaded"
+        opt(key, val["label"], tag, found)
+    blank()
+    info("Models go next to this script.")
+    info("Download: github.com/xinntao/Real-ESRGAN/releases")
+    line()
+    choice = ask("Upscale", ["0", *ESRGAN_MODELS.keys()])
     return None if choice == "0" else ESRGAN_MODELS[choice]
 
 
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║                        UPSCALER LOADER                          ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
 def load_upscaler(model_info):
-    """Load Real-ESRGAN model. Returns upsampler or exits on failure."""
     try:
         from realesrgan import RealESRGANer
         from basicsr.archs.rrdbnet_arch import RRDBNet
     except ImportError:
-        print("\n  [ERROR] Real-ESRGAN not installed.")
-        print("  Run: pip install realesrgan basicsr facexlib gfpgan\n")
+        error("Real-ESRGAN not installed.")
+        info("Run: pip install realesrgan basicsr facexlib gfpgan")
         sys.exit(1)
 
-    model_path = model_info["path"]
-    scale      = model_info["scale"]
-
-    if not os.path.exists(model_path):
-        print(f"\n  [ERROR] Model file not found: {model_path}")
-        print(f"  Download it from: https://github.com/xinntao/Real-ESRGAN/releases")
-        print(f"  and place it next to this script.\n")
+    if not os.path.exists(model_info["path"]):
+        error(f"Model not found: {model_info['path']}")
+        info("Download from: github.com/xinntao/Real-ESRGAN/releases")
         sys.exit(1)
 
-    print(f"\n  🤖  Loading Real-ESRGAN {scale}x model...")
-
-    model = RRDBNet(
-        num_in_ch=3, num_out_ch=3,
-        num_feat=64, num_block=23,
-        num_grow_ch=32, scale=scale
+    print(clr(f"\n  ◈  Loading Real-ESRGAN {model_info['scale']}× model…", C.CYAN, C.BOLD))
+    scale = model_info["scale"]
+    model = __import__("basicsr.archs.rrdbnet_arch", fromlist=["RRDBNet"]).RRDBNet(
+        num_in_ch=3, num_out_ch=3, num_feat=64,
+        num_block=23, num_grow_ch=32, scale=scale
     )
-
     upsampler = RealESRGANer(
-        scale=scale,
-        model_path=model_path,
-        model=model,
-        tile=512,        # tile size — lower if you get out-of-memory errors
-        tile_pad=10,
-        pre_pad=0,
-        half=False,      # set True if you have a modern NVIDIA GPU (faster)
+        scale=scale, model_path=model_info["path"],
+        model=model, tile=512, tile_pad=10, pre_pad=0, half=False,
     )
-
-    print(f"  ✔  Model loaded  (scale={scale}x)\n")
+    success(f"Model loaded  ({scale}× scale)")
     return upsampler
+
+
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║                      ENCODING SUMMARY                           ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+def print_summary(input_folder, output_file, src_w, src_h,
+                  out_w, out_h, fps, bitrate, upscale_info):
+    blank()
+    print(clr("  ╭" + "─" * (W - 4) + "╮", C.BLUE))
+    print(clr("  │", C.BLUE) +
+          clr("  ENCODING SUMMARY", C.BOLD, C.WHITE) +
+          " " * (W - 22) + clr("│", C.BLUE))
+    print(clr("  ├" + "─" * (W - 4) + "┤", C.BLUE))
+
+    rows = [
+        ("Input folder", f"{input_folder}/"),
+        ("Output file",  os.path.basename(output_file)),
+        ("Source res",   f"{src_w} × {src_h}"),
+    ]
+    if upscale_info:
+        rows.append(("AI upscale",
+                     f"{src_w * upscale_info['scale']} × {src_h * upscale_info['scale']}"
+                     f"  ({upscale_info['scale']}× Real-ESRGAN)"))
+    rows += [
+        ("Output res",  f"{out_w} × {out_h}"),
+        ("Frame rate",  f"{fps} fps"),
+        ("Bitrate",     f"{bitrate // 1_000_000} Mbps  ({bitrate:,} bps)"),
+        ("Codec",       CODEC + "  →  H.264 via FFmpeg"),
+    ]
+
+    for label, value in rows:
+        label_str = clr(f"  │  {label:<14}", C.BLUE) + clr("  ", C.RESET)
+        value_str = clr(value, C.WHITE)
+        pad = W - 4 - 16 - 2 - len(value)
+        print(label_str + value_str + " " * max(pad, 0) + clr("  │", C.BLUE))
+
+    print(clr("  ╰" + "─" * (W - 4) + "╯", C.BLUE))
+
+    if upscale_info:
+        blank()
+        warn("AI upscaling is slow  — ~5–30s per frame on CPU.")
+        warn("A CUDA-capable GPU will be much faster.")
+
+
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║                       PROGRESS BAR                              ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+def render_progress(i, total, start_time):
+    pct      = i / total
+    filled   = int(pct * 28)
+    bar      = clr("█" * filled, C.CYAN) + clr("░" * (28 - filled), C.GRAY)
+    elapsed  = time.time() - start_time
+    eta      = (elapsed / i * (total - i)) if i > 0 else 0
+    eta_str  = f"{int(eta // 60):02d}:{int(eta % 60):02d}"
+    pct_str  = clr(f"{pct * 100:5.1f}%", C.BOLD, C.WHITE)
+    frame_str= clr(f"{i}/{total}", C.GRAY)
+    print(f"  {bar}  {pct_str}  {frame_str}  ETA {clr(eta_str, C.YELLOW)}", end="\r")
 
 
 # ╔══════════════════════════════════════════════════════════════════╗
@@ -261,118 +362,114 @@ def load_upscaler(model_info):
 
 def png_sequence_to_mp4(input_folder, output_file, out_size, fps, bitrate, upscale_info):
 
-    # ── Collect & sort PNG files NUMERICALLY ─────────────────────
+    # ── Collect & sort numerically ────────────────────────────────
     frames = sorted(
         glob.glob(os.path.join(input_folder, "*.png")),
         key=lambda f: int(re.search(r'\d+', os.path.basename(f)).group())
     )
 
     if not frames:
-        print(f"\n[ERROR] No PNG files found in: {input_folder}")
+        error(f"No PNG files found in: {input_folder}")
         sys.exit(1)
 
-    print(f"\n[INFO] Found {len(frames)} PNG frame(s)")
-    print(f"[INFO] First frame: {os.path.basename(frames[0])}")
-    print(f"[INFO] Last frame : {os.path.basename(frames[-1])}")
+    blank()
+    print(clr(f"  ◈  {len(frames)} frames detected", C.CYAN, C.BOLD))
+    info(f"First  →  {os.path.basename(frames[0])}")
+    info(f"Last   →  {os.path.basename(frames[-1])}")
 
-    # ── Load upscaler if requested ────────────────────────────────
     upsampler = None
     if upscale_info:
         upsampler = load_upscaler(upscale_info)
 
-    # ── Read first frame to get source size ──────────────────────
     first = cv2.imread(frames[0])
     if first is None:
-        print(f"[ERROR] Could not read: {frames[0]}")
+        error(f"Could not read: {frames[0]}")
         sys.exit(1)
 
     src_h, src_w = first.shape[:2]
 
-    # Work out what the actual output size will be
     if upscale_info:
         ai_w = src_w * upscale_info["scale"]
         ai_h = src_h * upscale_info["scale"]
-        # If user also picked a target resolution, use that; otherwise use AI output size
         out_w, out_h = out_size if out_size else (ai_w, ai_h)
     else:
         out_w, out_h = out_size if out_size else (src_w, src_h)
 
-    # ── Summary ───────────────────────────────────────────────────
-    divider()
-    print(f"  Input folder  : {input_folder}/")
-    print(f"  Output file   : {output_file}")
-    print(f"  Source res    : {src_w} x {src_h}")
-    if upscale_info:
-        ai_w = src_w * upscale_info["scale"]
-        ai_h = src_h * upscale_info["scale"]
-        print(f"  After AI upsc : {ai_w} x {ai_h}  ({upscale_info['scale']}x Real-ESRGAN)")
-    print(f"  Output res    : {out_w} x {out_h}")
-    print(f"  FPS           : {fps}")
-    print(f"  Bitrate       : {bitrate // 1_000_000} Mbps  ({bitrate:,} bps)")
-    print(f"  Codec         : {CODEC}  →  H.264 (via FFmpeg)")
-    if upscale_info:
-        print(f"\n  ⚠  AI upscaling is slow — expect ~5–30s per frame on CPU.")
-        print(f"  ⚠  GPU with CUDA will be much faster.")
-    divider()
+    print_summary(input_folder, output_file, src_w, src_h,
+                  out_w, out_h, fps, bitrate, upscale_info)
 
-    confirm = input("  Start encoding? [Y/n]: ").strip().lower()
+    blank()
+    confirm = input(clr("  ❯ Start encoding? [Y/n]: ", C.BOLD, C.WHITE)).strip().lower()
     if confirm == "n":
-        print("  Cancelled.")
+        print(clr("\n  Cancelled.\n", C.GRAY))
         sys.exit(0)
 
-    # ── Set up VideoWriter ────────────────────────────────────────
+    # ── VideoWriter setup ─────────────────────────────────────────
     fourcc = cv2.VideoWriter_fourcc(*CODEC)
     out    = cv2.VideoWriter(output_file, fourcc, fps, (out_w, out_h))
-
     if not out.isOpened():
-        print("[ERROR] Could not open VideoWriter. Try changing CODEC to XVID.")
+        error("Could not open VideoWriter. Try CODEC = 'XVID'.")
         sys.exit(1)
-
     out.set(cv2.VIDEOWRITER_PROP_QUALITY, 100)
     out.set(cv2.CAP_PROP_BITRATE, bitrate)
 
-    # ── Write frames ──────────────────────────────────────────────
-    print()
+    # ── Encode ────────────────────────────────────────────────────
+    blank()
+    print(clr("  ◈  Encoding…", C.CYAN, C.BOLD))
+    blank()
+    start = time.time()
+
     for i, path in enumerate(frames, 1):
         frame = cv2.imread(path)
         if frame is None:
-            print(f"[WARNING] Skipping unreadable file: {path}")
+            warn(f"Skipping unreadable: {os.path.basename(path)}")
             continue
 
-        # AI upscale
         if upsampler is not None:
-            import numpy as np
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             upscaled, _ = upsampler.enhance(frame_rgb, outscale=upscale_info["scale"])
             frame = cv2.cvtColor(upscaled, cv2.COLOR_RGB2BGR)
 
-        # Resize to target output resolution if needed
         if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
             frame = cv2.resize(frame, (out_w, out_h), interpolation=RESIZE_FILTER)
 
         out.write(frame)
-
-        if i % 10 == 0 or i == len(frames):
-            pct = (i / len(frames)) * 100
-            bar = ("█" * int(pct // 5)).ljust(20)
-            print(f"  [{bar}] {pct:5.1f}%  ({i}/{len(frames)} frames)", end="\r")
+        render_progress(i, len(frames), start)
 
     out.release()
 
-    # ── Re-encode to H.264 via FFmpeg (mobile compatible) ────────
-    print(f"\n\n  🔄  Re-encoding to H.264 for mobile compatibility...")
+    elapsed = time.time() - start
+    mins, secs = divmod(int(elapsed), 60)
+
+    # ── Re-encode to H.264 ────────────────────────────────────────
+    blank()
+    blank()
+    print(clr("  ◈  Re-encoding to H.264…", C.CYAN, C.BOLD))
     temp_file = output_file.replace(".mp4", "_temp.mp4")
     os.rename(output_file, temp_file)
     subprocess.run([
         "ffmpeg", "-i", temp_file,
-        "-vcodec", "libx264",
-        "-crf", "18",
-        "-pix_fmt", "yuv420p",
-        output_file
-    ], check=True)
+        "-vcodec", "libx264", "-crf", "18",
+        "-pix_fmt", "yuv420p", output_file
+    ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     os.remove(temp_file)
 
-    print(f"\n  ✅  Done!  →  {os.path.abspath(output_file)}\n")
+    # ── Done ──────────────────────────────────────────────────────
+    blank()
+    print(clr("  ╭" + "─" * (W - 4) + "╮", C.GREEN))
+    print(clr("  │", C.GREEN) +
+          clr("  ✦  RENDER COMPLETE", C.BOLD, C.GREEN) +
+          " " * (W - 24) + clr("│", C.GREEN))
+    print(clr("  ├" + "─" * (W - 4) + "┤", C.GREEN))
+    path_val = os.path.abspath(output_file)
+    time_val = f"{mins:02d}m {secs:02d}s"
+    for label, value in [("Saved to", path_val), ("Time taken", time_val)]:
+        pad = W - 4 - 16 - 2 - len(value)
+        print(clr(f"  │  {label:<14}", C.GREEN) +
+              clr(f"  {value}", C.WHITE) +
+              " " * max(pad, 0) + clr("  │", C.GREEN))
+    print(clr("  ╰" + "─" * (W - 4) + "╯", C.GREEN))
+    blank()
 
 
 # ╔══════════════════════════════════════════════════════════════════╗
@@ -380,16 +477,14 @@ def png_sequence_to_mp4(input_folder, output_file, out_size, fps, bitrate, upsca
 # ╚══════════════════════════════════════════════════════════════════╝
 
 if __name__ == "__main__":
-    print("\n  ╔══════════════════════════════════════╗")
-    print("  ║      PNG SEQUENCE → MP4 CONVERTER    ║")
-    print("  ╚══════════════════════════════════════╝")
+    header()
 
-    input_folder  = pick_folder()
-    output_file   = pick_output_name()
-    res_key       = pick_resolution()
-    fps_key       = pick_fps()
-    bit_key       = pick_bitrate(res_key)
-    upscale_info  = pick_upscale()
+    input_folder = pick_folder()
+    output_file  = pick_output_name()
+    res_key      = pick_resolution()
+    fps_key      = pick_fps()
+    bit_key      = pick_bitrate(res_key)
+    upscale_info = pick_upscale()
 
     out_size = RESOLUTIONS[res_key]["size"]
     fps      = FPS_OPTIONS[fps_key]
