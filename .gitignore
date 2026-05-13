@@ -31,6 +31,3 @@ temp/
 # OS files
 .DS_Store
 Thumbs.db
-
-# Ignore all python files except png_to_mp4.py
-rename_frames.py
