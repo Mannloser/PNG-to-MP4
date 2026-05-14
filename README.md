@@ -217,15 +217,15 @@ The script shows a full summary before starting:
 
 ```
 ╭──────────────────────────────────────────────╮
-│              ENCODING SUMMARY               │
+│              ENCODING SUMMARY                │
 ├──────────────────────────────────────────────┤
-│ Input Folder  : {input_folder}              │
-│ Output File   : {output_file}               │
-│ Source Res    : {source_resolution}         │
-│ Output Res    : {output_resolution}         │
-│ Frame Rate    : {fps} FPS                   │
-│ Bitrate       : {bitrate}                   │
-│ Codec         : {codec}                     │
+│ Input Folder  : {input_folder}               │
+│ Output File   : {output_file}                │
+│ Source Res    : {source_resolution}          │
+│ Output Res    : {output_resolution}          │
+│ Frame Rate    : {fps} FPS                    │
+│ Bitrate       : {bitrate}                    │
+│ Codec         : {codec}                      │
 ╰──────────────────────────────────────────────╯
 
 ❯ Start encoding? [Y/n]:
