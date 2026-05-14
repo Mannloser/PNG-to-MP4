@@ -237,10 +237,10 @@ When done:
 
 ```
 ╭──────────────────────────────────────────────╮
-│              ✦ RENDER COMPLETE              │
+│              ✦ RENDER COMPLETE               │
 ├──────────────────────────────────────────────┤
-│ Saved To    : {output_path}                 │
-│ Time Taken  : {time_taken}                  │
+│ Saved To    : {output_path}                  │
+│ Time Taken  : {time_taken}                   │
 ╰──────────────────────────────────────────────╯
 ```
 
