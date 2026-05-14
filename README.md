@@ -216,19 +216,19 @@ Once models are present, the menu will show `✔ model found` next to each optio
 The script shows a full summary before starting:
 
 ```
-  ╭──────────────────────────────────────────────────────╮
-  │  ENCODING SUMMARY                                    │
-  ├──────────────────────────────────────────────────────┤
-  │  Input folder    (selected input folder)                      │
-  │  Output file     (selected output folder)                     │
-  │  Source res      (source res)                        │
-  │  Output res      (selected output res)                        │
-  │  Frame rate      (selected fps)                               │
-  │  Bitrate         (selected bitrate)                           │
-  │  Codec           (selected codec)                             │
-  ╰──────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────╮
+│              ENCODING SUMMARY               │
+├──────────────────────────────────────────────┤
+│ Input Folder  : {input_folder}              │
+│ Output File   : {output_file}               │
+│ Source Res    : {source_resolution}         │
+│ Output Res    : {output_resolution}         │
+│ Frame Rate    : {fps} FPS                   │
+│ Bitrate       : {bitrate}                   │
+│ Codec         : {codec}                     │
+╰──────────────────────────────────────────────╯
 
-  ❯ Start encoding? [Y/n]:
+❯ Start encoding? [Y/n]:
 ```
 
 Press Enter (or `Y`) to start. A live progress bar will show while encoding:
@@ -236,12 +236,12 @@ Press Enter (or `Y`) to start. A live progress bar will show while encoding:
 When done:
 
 ```
-  ╭──────────────────────────────────────────────────────╮
-  │  ✦  RENDER COMPLETE                                  │
-  ├──────────────────────────────────────────────────────┤
-  │  Saved to        (output path)                       │
-  │  Time taken      (time)                              │
-  ╰──────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────╮
+│              ✦ RENDER COMPLETE              │
+├──────────────────────────────────────────────┤
+│ Saved To    : {output_path}                 │
+│ Time Taken  : {time_taken}                  │
+╰──────────────────────────────────────────────╯
 ```
 
 ---
