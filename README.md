@@ -174,7 +174,16 @@ Match this to whatever you set in Blender (or your render software) when you exp
   [3]  High    best quality · larger file · fast motion 10 Mbps
 ```
 
-Medium is recommended for most use cases — it gets the job done without bloating the file size.
+Recommended bitrates by resolution:
+
+| Resolution | Low | Medium | High |
+|---|---|---|---|
+| 720p | 2 Mbps | 3.5 Mbps | 5 Mbps |
+| 1080p | 5 Mbps | 8 Mbps | 10 Mbps |
+| 1440p | 10 Mbps | 15 Mbps | 20 Mbps |
+| 4K | 35 Mbps | 50 Mbps | 68 Mbps |
+
+For smooth background animations (like a coolbg loop), Low or Medium is more than enough.
 
 ---
 
