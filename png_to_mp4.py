@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 PNG Sequence → MP4 Converter  (Interactive Mode)
-Requires: pip install opencv-python realesrgan basicsr facexlib gfpgan
+Requires: pip install opencv-python
 """
 
 import cv2
@@ -19,11 +19,6 @@ import subprocess
 
 CODEC         = "mp4v"
 RESIZE_FILTER = cv2.INTER_LANCZOS4
-
-ESRGAN_MODELS = {
-    "2": {"label": "2×  — doubles resolution",   "scale": 2, "path": "RealESRGAN_x2plus.pth"},
-    "4": {"label": "4×  — quadruples resolution", "scale": 4, "path": "RealESRGAN_x4plus.pth"},
-}
 
 
 # ╔══════════════════════════════════════════════════════════════════╗
@@ -250,59 +245,12 @@ def pick_bitrate(res_key):
     return ask("Bitrate", presets.keys())
 
 
-def pick_upscale():
-    section("AI UPSCALING  (Real-ESRGAN)")
-    opt("0", clr("No upscaling", C.WHITE))
-    for key, val in ESRGAN_MODELS.items():
-        found    = os.path.exists(val["path"])
-        tag      = "model found" if found else "model not downloaded"
-        opt(key, val["label"], tag, found)
-    blank()
-    info("Models go next to this script.")
-    info("Download: github.com/xinntao/Real-ESRGAN/releases")
-    line()
-    choice = ask("Upscale", ["0", *ESRGAN_MODELS.keys()])
-    return None if choice == "0" else ESRGAN_MODELS[choice]
-
-
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║                        UPSCALER LOADER                          ║
-# ╚══════════════════════════════════════════════════════════════════╝
-
-def load_upscaler(model_info):
-    try:
-        from realesrgan import RealESRGANer
-        from basicsr.archs.rrdbnet_arch import RRDBNet
-    except ImportError:
-        error("Real-ESRGAN not installed.")
-        info("Run: pip install realesrgan basicsr facexlib gfpgan")
-        sys.exit(1)
-
-    if not os.path.exists(model_info["path"]):
-        error(f"Model not found: {model_info['path']}")
-        info("Download from: github.com/xinntao/Real-ESRGAN/releases")
-        sys.exit(1)
-
-    print(clr(f"\n  ◈  Loading Real-ESRGAN {model_info['scale']}× model…", C.CYAN, C.BOLD))
-    scale = model_info["scale"]
-    model = __import__("basicsr.archs.rrdbnet_arch", fromlist=["RRDBNet"]).RRDBNet(
-        num_in_ch=3, num_out_ch=3, num_feat=64,
-        num_block=23, num_grow_ch=32, scale=scale
-    )
-    upsampler = RealESRGANer(
-        scale=scale, model_path=model_info["path"],
-        model=model, tile=512, tile_pad=10, pre_pad=0, half=False,
-    )
-    success(f"Model loaded  ({scale}× scale)")
-    return upsampler
-
-
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║                      ENCODING SUMMARY                           ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
 def print_summary(input_folder, output_file, src_w, src_h,
-                  out_w, out_h, fps, bitrate, upscale_info):
+                  out_w, out_h, fps, bitrate):
     blank()
     print(clr("  ╭" + "─" * (W - 4) + "╮", C.BLUE))
     print(clr("  │", C.BLUE) +
@@ -314,12 +262,6 @@ def print_summary(input_folder, output_file, src_w, src_h,
         ("Input folder", f"{input_folder}/"),
         ("Output file",  os.path.basename(output_file)),
         ("Source res",   f"{src_w} × {src_h}"),
-    ]
-    if upscale_info:
-        rows.append(("AI upscale",
-                     f"{src_w * upscale_info['scale']} × {src_h * upscale_info['scale']}"
-                     f"  ({upscale_info['scale']}× Real-ESRGAN)"))
-    rows += [
         ("Output res",  f"{out_w} × {out_h}"),
         ("Frame rate",  f"{fps} fps"),
         ("Bitrate",     f"{bitrate // 1_000_000} Mbps  ({bitrate:,} bps)"),
@@ -333,11 +275,6 @@ def print_summary(input_folder, output_file, src_w, src_h,
         print(label_str + value_str + " " * max(pad, 0) + clr("  │", C.BLUE))
 
     print(clr("  ╰" + "─" * (W - 4) + "╯", C.BLUE))
-
-    if upscale_info:
-        blank()
-        warn("AI upscaling is slow  — ~5–30s per frame on CPU.")
-        warn("A CUDA-capable GPU will be much faster.")
 
 
 # ╔══════════════════════════════════════════════════════════════════╗
@@ -360,7 +297,7 @@ def render_progress(i, total, start_time):
 # ║                         CONVERTER LOGIC                         ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-def png_sequence_to_mp4(input_folder, output_file, out_size, fps, bitrate, upscale_info):
+def png_sequence_to_mp4(input_folder, output_file, out_size, fps, bitrate):
 
     # ── Collect & sort numerically ────────────────────────────────
     frames = sorted(
@@ -377,26 +314,16 @@ def png_sequence_to_mp4(input_folder, output_file, out_size, fps, bitrate, upsca
     info(f"First  →  {os.path.basename(frames[0])}")
     info(f"Last   →  {os.path.basename(frames[-1])}")
 
-    upsampler = None
-    if upscale_info:
-        upsampler = load_upscaler(upscale_info)
-
     first = cv2.imread(frames[0])
     if first is None:
         error(f"Could not read: {frames[0]}")
         sys.exit(1)
 
     src_h, src_w = first.shape[:2]
-
-    if upscale_info:
-        ai_w = src_w * upscale_info["scale"]
-        ai_h = src_h * upscale_info["scale"]
-        out_w, out_h = out_size if out_size else (ai_w, ai_h)
-    else:
-        out_w, out_h = out_size if out_size else (src_w, src_h)
+    out_w, out_h = out_size if out_size else (src_w, src_h)
 
     print_summary(input_folder, output_file, src_w, src_h,
-                  out_w, out_h, fps, bitrate, upscale_info)
+                  out_w, out_h, fps, bitrate)
 
     blank()
     confirm = input(clr("  ❯ Start encoding? [Y/n]: ", C.BOLD, C.WHITE)).strip().lower()
@@ -424,11 +351,6 @@ def png_sequence_to_mp4(input_folder, output_file, out_size, fps, bitrate, upsca
         if frame is None:
             warn(f"Skipping unreadable: {os.path.basename(path)}")
             continue
-
-        if upsampler is not None:
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            upscaled, _ = upsampler.enhance(frame_rgb, outscale=upscale_info["scale"])
-            frame = cv2.cvtColor(upscaled, cv2.COLOR_RGB2BGR)
 
         if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
             frame = cv2.resize(frame, (out_w, out_h), interpolation=RESIZE_FILTER)
@@ -484,10 +406,9 @@ if __name__ == "__main__":
     res_key      = pick_resolution()
     fps_key      = pick_fps()
     bit_key      = pick_bitrate(res_key)
-    upscale_info = pick_upscale()
 
     out_size = RESOLUTIONS[res_key]["size"]
     fps      = FPS_OPTIONS[fps_key]
     bitrate  = BITRATE_PRESETS[res_key][bit_key]
 
-    png_sequence_to_mp4(input_folder, output_file, out_size, fps, bitrate, upscale_info)
+    png_sequence_to_mp4(input_folder, output_file, out_size, fps, bitrate)

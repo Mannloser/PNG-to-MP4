@@ -18,7 +18,6 @@ Everything runs through a clean, color-coded interactive terminal menu. No comma
 - Resolution presets: 720p, 1080p, 1440p, 4K, or keep original
 - FPS options: 24, 25, 30, 60
 - Bitrate control: Low / Medium / High presets per resolution
-- Optional AI upscaling via Real-ESRGAN (2× or 4×)
 - Custom output file naming with overwrite protection
 - Live progress bar with ETA while encoding
 - Re-encodes to H.264 via FFmpeg for maximum compatibility
@@ -37,14 +36,6 @@ Download from [python.org](https://www.python.org/downloads/) if you don't have 
 
 ```bash
 pip install opencv-python
-```
-
-### For AI upscaling (optional)
-
-Only needed if you want to use the Real-ESRGAN upscaling feature:
-
-```bash
-pip install realesrgan basicsr facexlib gfpgan
 ```
 
 ### FFmpeg
@@ -187,31 +178,7 @@ For smooth background animations (like a coolbg loop), Low or Medium is more tha
 
 ---
 
-**Step 6 — AI Upscaling (optional)**
-
-```
-  ◈  AI UPSCALING  (Real-ESRGAN)
-  ──────────────────────────────────────────────────────
-  [0]  No upscaling
-  [2]  2× — doubles resolution     [⚠ model not downloaded]
-  [4]  4× — quadruples resolution  [⚠ model not downloaded]
-```
-
-To use AI upscaling:
-
-1. Install the packages: `pip install realesrgan basicsr facexlib gfpgan`
-2. Download the model `.pth` files from the [Real-ESRGAN releases page](https://github.com/xinntao/Real-ESRGAN/releases):
-   - `RealESRGAN_x2plus.pth` for 2×
-   - `RealESRGAN_x4plus.pth` for 4×
-3. Place the `.pth` files in the same folder as `png_to_mp4.py`
-
-Once models are present, the menu will show `✔ model found` next to each option.
-
-> ⚠ AI upscaling runs on CPU by default and can take 5–30 seconds per frame. If you have an NVIDIA GPU, set `half=True` in the script for much faster processing.
-
----
-
-**Step 7 — Confirm and encode**
+**Step 6 — Confirm and encode**
 
 The script shows a full summary before starting:
 
@@ -256,9 +223,6 @@ FFmpeg is not installed or not in your PATH. Install it from [ffmpeg.org](https:
 
 **VideoWriter won't open**
 Try changing `CODEC = "mp4v"` to `CODEC = "XVID"` at the top of the script.
-
-**AI upscaling out of memory**
-Lower the `tile=512` value inside `load_upscaler()` in the script to something like `tile=256`.
 
 
 **Any other issue**
